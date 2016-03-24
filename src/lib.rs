@@ -96,11 +96,11 @@ fn default_not_found(req: Request, res: Response) {
     res.send(message.as_bytes()).unwrap();
 }
 
-fn test_handler(_: Request, _: Response) {}
-
 #[test]
 #[should_panic]
 fn less_than_two_routes() {
+    fn test_handler(_: Request, _: Response) {}
+
     let mut router = Router::new();
     router.add_route("/", test_handler);
     router.finalize().unwrap();
