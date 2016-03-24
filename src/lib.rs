@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use hyper::server::{Handler, Request, Response};
 use regex::RegexSet;
 
-type RouterFn = fn(Request, Response);
+pub type RouterFn = fn(Request, Response);
 
 const MIN_ROUTES: usize = 2;
 
