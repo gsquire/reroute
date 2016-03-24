@@ -37,3 +37,15 @@ fn main() {
     Server::http("127.0.0.1:3000").unwrap().handle(router).unwrap();
 }
 ```
+
+You can then hit localhost on port 3000 to see the responses based on the routes
+that you pass.
+
+```sh
+curl localhost:3000/123 -> It works for digits!
+
+curl localhost:3000/faux -> No route found for /faux
+```
+
+Possible feature additions:
+- Add capture groups for path extractions
