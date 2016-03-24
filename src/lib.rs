@@ -59,6 +59,9 @@ impl Router {
     /// vector that was built while using the `add_route` function. It also
     /// requires that there exist two or more routes so that the RegexSet can be
     /// successfully constructed.
+    ///
+    /// It will also ensure that there is a handler for routes that do not match
+    /// any available in the set.
     pub fn finalize(&mut self) -> Result<(), String> {
         if self.route_list.len() < MIN_ROUTES {
             return Err("The router must contain 2 or more routes".to_owned());
