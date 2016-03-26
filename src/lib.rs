@@ -6,9 +6,11 @@ use std::collections::HashMap;
 use hyper::server::{Handler, Request, Response};
 use regex::RegexSet;
 
-pub type RouterFn = fn(Request, Response);
+use error::RouterError;
 
 const MIN_ROUTES: usize = 2;
+
+pub type RouterFn = fn(Request, Response);
 
 pub struct Router {
     not_found: Option<RouterFn>,
@@ -62,9 +64,9 @@ impl Router {
     ///
     /// It will also ensure that there is a handler for routes that do not match
     /// any available in the set.
-    pub fn finalize(&mut self) -> Result<(), String> {
+    pub fn finalize(&mut self) -> Result<(), RouterError> {
         if self.route_list.len() < MIN_ROUTES {
-            return Err("The router must contain 2 or more routes".to_owned());
+            return Err(RouterError::TooFewRoutes);
         }
 
         // Check if the user added a 404 handler, else use the default.
@@ -79,8 +81,8 @@ impl Router {
                 self.routes = r;
                 Ok(())
             }
-            Err(e) => {
-                Err(format!("Error making RegexSet: {}", e))
+            Err(_) => {
+                Err(RouterError::BadSet)
             }
         }
     }
@@ -95,6 +97,8 @@ fn default_not_found(req: Request, res: Response) {
     let message = format!("No route handler found for {}", req.uri);
     res.send(message.as_bytes()).unwrap();
 }
+
+mod error;
 
 #[test]
 #[should_panic]
