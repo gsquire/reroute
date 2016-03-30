@@ -8,8 +8,6 @@ use regex::RegexSet;
 
 use error::RouterError;
 
-const MIN_ROUTES: usize = 2;
-
 pub type RouterFn = fn(Request, Response);
 
 pub struct Router {
@@ -44,7 +42,7 @@ impl Router {
     pub fn new() -> Router {
         Router {
             not_found: None,
-            routes: RegexSet::new(&["", ""]).unwrap(),
+            routes: RegexSet::new(&[""]).unwrap(),
             route_list: Vec::new(),
             route_map: HashMap::new(),
         }
@@ -65,7 +63,7 @@ impl Router {
     /// It will also ensure that there is a handler for routes that do not match
     /// any available in the set.
     pub fn finalize(&mut self) -> Result<(), RouterError> {
-        if self.route_list.len() < MIN_ROUTES {
+        if self.route_list.len() == 0  {
             return Err(RouterError::TooFewRoutes);
         }
 
@@ -106,6 +104,5 @@ fn less_than_two_routes() {
     fn test_handler(_: Request, _: Response) {}
 
     let mut router = Router::new();
-    router.add_route("/", test_handler);
     router.finalize().unwrap();
 }
