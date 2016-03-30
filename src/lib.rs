@@ -12,7 +12,7 @@ pub type RouterFn = fn(Request, Response);
 
 pub struct Router {
     not_found: Option<RouterFn>,
-    routes: RegexSet,
+    routes: Option<RegexSet>,
     route_list: Vec<String>,
     route_map: HashMap<String, RouterFn>
 }
@@ -23,7 +23,7 @@ impl Handler for Router {
     // function passing the hyper Request and Response structures.
     fn handle(&self, req: Request, res: Response) {
         let uri = format!("{}", req.uri);
-        let matches = self.routes.matches(&uri);
+        let matches = self.routes.clone().unwrap().matches(&uri);
         let route = matches.iter().next();
         match route {
             Some(r) => {
@@ -42,7 +42,7 @@ impl Router {
     pub fn new() -> Router {
         Router {
             not_found: None,
-            routes: RegexSet::new(&[""]).unwrap(),
+            routes: None,
             route_list: Vec::new(),
             route_map: HashMap::new(),
         }
@@ -76,7 +76,7 @@ impl Router {
         let re_routes = RegexSet::new(self.route_list.iter());
         match re_routes {
             Ok(r) => {
-                self.routes = r;
+                self.routes = Some(r);
                 Ok(())
             }
             Err(_) => {
