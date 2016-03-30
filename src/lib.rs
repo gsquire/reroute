@@ -100,6 +100,7 @@ mod error;
 
 #[test]
 #[should_panic]
+#[allow(dead_code)]
 fn less_than_two_routes() {
     fn test_handler(_: Request, _: Response) {}
 
