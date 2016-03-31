@@ -11,13 +11,10 @@ extern crate reroute;
 
 use hyper::Server;
 use hyper::server::{Request, Response};
-use reroute::Router;
+use reroute::{Captures, Router};
 
-fn a_handler(_: Request, res: Response) {
-    res.send(b"It works for words!").unwrap();
-}
-
-fn digit_handler(_: Request, res: Response) {
+fn digit_handler(_: Request, res: Response, c: Captures) {
+    println!("captures: {:?}", c);
     res.send(b"It works for digits!").unwrap();
 }
 
@@ -25,8 +22,7 @@ fn main() {
     let mut router = Router::new();
 
     // Use raw strings so you don't need to escape patterns.
-    router.add_route(r"/a{2}", a_handler);
-    router.add_route(r"/\d+", digit_handler);
+    router.add_route(r"/(\d+)", digit_handler);
 
     // There is no 404 handler added, so it will use the default defined in the
     // library.
@@ -42,9 +38,12 @@ You can then hit localhost on port 3000 to see the responses based on the routes
 that you pass.
 
 ```sh
-curl localhost:3000/123 -> It works for digits!
+curl localhost:3000/123 ->
+    captures: Some(["/123", "123"])
+    It works for digits!
 
-curl localhost:3000/faux -> No route found for /faux
+curl localhost:3000/faux ->
+    No route found for /faux
 ```
 
 Possible feature additions:
