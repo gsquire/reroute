@@ -49,3 +49,4 @@ curl localhost:3000/faux -> No route found for /faux
 
 Possible feature additions:
 - Add capture groups for path extractions
+- Add HTTP verb capabilities and checks
