@@ -4,11 +4,12 @@ extern crate regex;
 use std::collections::HashMap;
 
 use hyper::server::{Handler, Request, Response};
-use regex::RegexSet;
+use regex::{Regex, RegexSet};
 
 use error::RouterError;
 
-pub type RouterFn = fn(Request, Response);
+pub type Captures = Option<Vec<String>>;
+pub type RouterFn = fn(Request, Response, Captures);
 
 pub struct Router {
     not_found: Option<RouterFn>,
@@ -28,10 +29,13 @@ impl Handler for Router {
         match route {
             Some(r) => {
                 let key = &self.route_list[r];
+                let captures = get_captures(key, &uri);
                 let handler = self.route_map.get(key).unwrap();
-                handler(req, res);
+                handler(req, res, captures);
             },
-            None => self.not_found.unwrap()(req, res)
+            // There is no point in passing captures to a route handler that
+            // wasn't found.
+            None => self.not_found.unwrap()(req, res, None)
         }
     }
 }
@@ -91,9 +95,25 @@ impl Router {
     }
 }
 
-fn default_not_found(req: Request, res: Response) {
+fn default_not_found(req: Request, res: Response, _: Captures) {
     let message = format!("No route handler found for {}", req.uri);
     res.send(message.as_bytes()).unwrap();
+}
+
+fn get_captures(route: &str, uri: &str) -> Captures {
+    // We know this compiles because it was part of the set.
+    let re = Regex::new(route).unwrap();
+    let caps = re.captures(uri);
+    match caps {
+        Some(caps) => {
+            let mut v = vec![];
+            for c in caps.iter() {
+                v.push(c.unwrap().to_owned());
+            }
+            Some(v)
+        },
+        None => None
+    }
 }
 
 mod error;
@@ -107,7 +127,7 @@ fn less_than_two_routes() {
 
 #[test]
 fn bad_regular_expression() {
-    fn test_handler(_: Request, _: Response) {}
+    fn test_handler(_: Request, _: Response, _: Captures) {}
     let mut router = Router::new();
     router.add_route(r"/[", test_handler);
     let e = router.finalize();
