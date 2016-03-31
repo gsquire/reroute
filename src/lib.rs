@@ -99,8 +99,17 @@ fn default_not_found(req: Request, res: Response) {
 mod error;
 
 #[test]
-#[should_panic]
 fn less_than_two_routes() {
     let mut router = Router::new();
-    router.finalize().unwrap();
+    let e = router.finalize();
+    assert_eq!(e.err(), Some(RouterError::TooFewRoutes));
+}
+
+#[test]
+fn bad_regular_expression() {
+    fn test_handler(_: Request, _: Response) {}
+    let mut router = Router::new();
+    router.add_route(r"/[", test_handler);
+    let e = router.finalize();
+    assert_eq!(e.err(), Some(RouterError::BadSet));
 }

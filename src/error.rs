@@ -1,7 +1,7 @@
 use std::{error, fmt};
 
 // Potential errors that can happen while constructing a router.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum RouterError {
     TooFewRoutes,
     BadSet
