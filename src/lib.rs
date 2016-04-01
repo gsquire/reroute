@@ -4,6 +4,7 @@ extern crate regex;
 use std::collections::HashMap;
 
 use hyper::server::{Handler, Request, Response};
+use hyper::status::StatusCode;
 use regex::{Regex, RegexSet};
 
 use error::RouterError;
@@ -95,8 +96,9 @@ impl Router {
     }
 }
 
-fn default_not_found(req: Request, res: Response, _: Captures) {
+fn default_not_found(req: Request, mut res: Response, _: Captures) {
     let message = format!("No route handler found for {}", req.uri);
+    *res.status_mut() = StatusCode::NotFound;
     res.send(message.as_bytes()).unwrap();
 }
 
