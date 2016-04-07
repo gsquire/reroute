@@ -5,6 +5,7 @@ authors = ["Garrett Squire <garrettsquire@gmail.com>"]
 description = "A router that can use regular expressions for the hyper package"
 repository = "https://github.com/gsquire/reroute"
 keywords = ["http", "hyper"]
+documentation = "https://gsquire.github.io/docs/rust/reroute/"
 license = "MIT"
 
 [dependencies]

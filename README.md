@@ -10,6 +10,7 @@ extern crate hyper;
 extern crate reroute;
 
 use hyper::Server;
+use hyper::method::Method;
 use hyper::server::{Request, Response};
 use reroute::{Captures, Router};
 
@@ -22,7 +23,7 @@ fn main() {
     let mut router = Router::new();
 
     // Use raw strings so you don't need to escape patterns.
-    router.add_route(r"/(\d+)", digit_handler);
+    router.add_route(Method::Get, r"/(\d+)", digit_handler);
 
     // There is no 404 handler added, so it will use the default defined in the
     // library.
