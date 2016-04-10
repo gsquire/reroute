@@ -23,7 +23,7 @@ fn main() {
     let mut router = Router::new();
 
     // Use raw strings so you don't need to escape patterns.
-    router.add_route(Method::Get, r"/(\d+)", digit_handler);
+    router.get(r"/(\d+)", digit_handler);
 
     // There is no 404 handler added, so it will use the default defined in the
     // library.
@@ -46,6 +46,3 @@ curl localhost:3000/123 ->
 curl localhost:3000/faux ->
     No route found for /faux
 ```
-
-Possible feature additions:
-- Add HTTP verb capabilities and checks
