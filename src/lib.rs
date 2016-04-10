@@ -3,6 +3,7 @@ extern crate regex;
 
 use std::collections::HashMap;
 
+use hyper::method::Method;
 use hyper::server::{Handler, Request, Response};
 use hyper::status::StatusCode;
 use regex::{Regex, RegexSet};
@@ -12,11 +13,27 @@ use error::RouterError;
 pub type Captures = Option<Vec<String>>;
 pub type RouterFn = fn(Request, Response, Captures);
 
+#[derive(PartialEq, Eq, Hash)]
+pub struct RouteInfo {
+    route: String,
+    verb: Method
+}
+
+/// The Router struct contains the information for your app to route requests
+/// properly based on their HTTP method, and matching route. It allows the use
+/// of a custom 404 handler if desired, but provides a default as well.
+///
+/// Under the hood, a Router uses a RegexSet to match URI's that come in to the
+/// instance of the hyper server. Because of this, it has the potential to match
+/// multiple patterns that you provide. It will call the first handler that it
+/// matches against, so order matters.
 pub struct Router {
-    not_found: Option<RouterFn>,
+    /// A custom 404 handler that you can provide.
+    pub not_found: Option<RouterFn>,
+
     routes: Option<RegexSet>,
     route_list: Vec<String>,
-    route_map: HashMap<String, RouterFn>
+    route_map: HashMap<RouteInfo, RouterFn>
 }
 
 impl Handler for Router {
@@ -26,13 +43,21 @@ impl Handler for Router {
     fn handle(&self, req: Request, res: Response) {
         let uri = format!("{}", req.uri);
         let matches = self.routes.clone().unwrap().matches(&uri);
-        let route = matches.iter().next();
-        match route {
-            Some(r) => {
-                let key = &self.route_list[r];
-                let captures = get_captures(key, &uri);
-                let handler = self.route_map.get(key).unwrap();
-                handler(req, res, captures);
+        let index = matches.iter().next();
+        match index {
+            Some(i) => {
+                let route = &self.route_list[i];
+                let route_info = RouteInfo{route: route.clone(), verb: req.method.clone()};
+                let handler = self.route_map.get(&route_info);
+                match handler {
+                    Some(h) => {
+                        let captures = get_captures(route, &uri);
+                        h(req, res, captures);
+                    }
+                    None => {
+                        not_allowed(req, res);
+                    }
+                }
             },
             // There is no point in passing captures to a route handler that
             // wasn't found.
@@ -54,15 +79,42 @@ impl Router {
     }
 
     /// Add a route to the router and give it a function to call when the route
-    /// is matched against.
-    pub fn add_route(&mut self, route: &str, handler: RouterFn) {
+    /// is matched against. You can call this explicitly or use the convenience
+    /// methods defined below.
+    pub fn add_route(&mut self, verb: Method, route: &str, handler: RouterFn) {
+        let route_info = RouteInfo{route: route.to_owned(), verb: verb};
         self.route_list.push(route.to_owned());
-        self.route_map.insert(route.to_owned(), handler);
+        self.route_map.insert(route_info, handler);
+    }
+
+    /// A convenience method for OPTIONS requests.
+    pub fn options(&mut self, route: &str, handler: RouterFn) {
+        self.add_route(Method::Options, route, handler);
+    }
+
+    /// A convenience method for GET requests.
+    pub fn get(&mut self, route: &str, handler: RouterFn) {
+        self.add_route(Method::Get, route, handler);
+    }
+
+    /// A convenience method for POST requests.
+    pub fn postt(&mut self, route: &str, handler: RouterFn) {
+        self.add_route(Method::Post, route, handler);
+    }
+
+    /// A convenience method for PUT requests.
+    pub fn put(&mut self, route: &str, handler: RouterFn) {
+        self.add_route(Method::Put, route, handler);
+    }
+
+    /// A convenience method for DELETE requests.
+    pub fn delete(&mut self, route: &str, handler: RouterFn) {
+        self.add_route(Method::Delete, route, handler);
     }
 
     /// This function ensures that a valid RegexSet could be made from the route
-    /// vector that was built while using the `add_route` function. It also
-    /// requires that there exist two or more routes so that the RegexSet can be
+    /// vector that was built while using the functions that add routes. It also
+    /// requires that there exist at least one route so that the RegexSet can be
     /// successfully constructed.
     ///
     /// It will also ensure that there is a handler for routes that do not match
@@ -96,12 +148,21 @@ impl Router {
     }
 }
 
+// The default 404 handler.
 fn default_not_found(req: Request, mut res: Response, _: Captures) {
     let message = format!("No route handler found for {}", req.uri);
     *res.status_mut() = StatusCode::NotFound;
     res.send(message.as_bytes()).unwrap();
 }
 
+// This handler will get fired when a URI matches a route but contains the wrong method.
+fn not_allowed(_: Request, mut res: Response) {
+    *res.status_mut() = StatusCode::MethodNotAllowed;
+    let res = res.start().unwrap();
+    res.end().unwrap();
+}
+
+// Return that captures from a pattern that was matched.
 fn get_captures(route: &str, uri: &str) -> Captures {
     // We know this compiles because it was part of the set.
     let re = Regex::new(route).unwrap();
@@ -131,7 +192,7 @@ fn less_than_two_routes() {
 fn bad_regular_expression() {
     fn test_handler(_: Request, _: Response, _: Captures) {}
     let mut router = Router::new();
-    router.add_route(r"/[", test_handler);
+    router.add_route(Method::Get, r"/[", test_handler);
     let e = router.finalize();
     assert_eq!(e.err(), Some(RouterError::BadSet));
 }
