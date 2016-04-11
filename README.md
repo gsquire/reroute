@@ -10,7 +10,6 @@ extern crate hyper;
 extern crate reroute;
 
 use hyper::Server;
-use hyper::method::Method;
 use hyper::server::{Request, Response};
 use reroute::{Captures, Router};
 
