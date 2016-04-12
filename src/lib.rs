@@ -33,6 +33,7 @@ pub struct Router {
 
     routes: Option<RegexSet>,
     route_list: Vec<String>,
+    compiled_list: Vec<Regex>,
     route_map: HashMap<RouteInfo, RouterFn>
 }
 
@@ -42,7 +43,7 @@ impl Handler for Router {
     // function passing the hyper Request and Response structures.
     fn handle(&self, req: Request, res: Response) {
         let uri = format!("{}", req.uri);
-        let matches = self.routes.clone().unwrap().matches(&uri);
+        let matches = self.routes.as_ref().unwrap().matches(&uri);
         let index = matches.iter().next();
         match index {
             Some(i) => {
@@ -51,7 +52,8 @@ impl Handler for Router {
                 let handler = self.route_map.get(&route_info);
                 match handler {
                     Some(h) => {
-                        let captures = get_captures(route, &uri);
+                        let compiled_pattern = &self.compiled_list[i];
+                        let captures = get_captures(compiled_pattern, &uri);
                         h(req, res, captures);
                     }
                     None => {
@@ -74,6 +76,7 @@ impl Router {
             not_found: None,
             routes: None,
             route_list: Vec::new(),
+            compiled_list: Vec::new(),
             route_map: HashMap::new(),
         }
     }
@@ -83,6 +86,11 @@ impl Router {
     /// methods defined below.
     pub fn add_route(&mut self, verb: Method, route: &str, handler: RouterFn) {
         let route_info = RouteInfo{route: route.to_owned(), verb: verb};
+        let pattern = Regex::new(route);
+        match pattern {
+            Ok(p) => { self.compiled_list.push(p); },
+            Err(e) => { println!("Not adding this route due to error: {}", e); }
+        }
         self.route_list.push(route.to_owned());
         self.route_map.insert(route_info, handler);
     }
@@ -98,7 +106,7 @@ impl Router {
     }
 
     /// A convenience method for POST requests.
-    pub fn postt(&mut self, route: &str, handler: RouterFn) {
+    pub fn post(&mut self, route: &str, handler: RouterFn) {
         self.add_route(Method::Post, route, handler);
     }
 
@@ -163,10 +171,9 @@ fn not_allowed(_: Request, mut res: Response) {
 }
 
 // Return that captures from a pattern that was matched.
-fn get_captures(route: &str, uri: &str) -> Captures {
+fn get_captures(pattern: &Regex, uri: &str) -> Captures {
     // We know this compiles because it was part of the set.
-    let re = Regex::new(route).unwrap();
-    let caps = re.captures(uri);
+    let caps = pattern.captures(uri);
     match caps {
         Some(caps) => {
             let mut v = vec![];
