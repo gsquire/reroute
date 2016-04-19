@@ -9,5 +9,5 @@ documentation = "https://gsquire.github.io/docs/rust/reroute/"
 license = "MIT"
 
 [dependencies]
-hyper = "0.8.0"
+hyper = "0.8"
 regex = "0.1"
