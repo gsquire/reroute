@@ -20,13 +20,13 @@ pub struct RouteInfo {
 }
 
 /// The Router struct contains the information for your app to route requests
-/// properly based on their HTTP method, and matching route. It allows the use
-/// of a custom 404 handler if desired, but provides a default as well.
+/// properly based on their HTTP method and matching route. It allows the use
+/// of a custom 404 handler if desired but provides a default as well.
 ///
-/// Under the hood, a Router uses a RegexSet to match URI's that come in to the
+/// Under the hood a Router uses a RegexSet to match URI's that come in to the
 /// instance of the hyper server. Because of this, it has the potential to match
 /// multiple patterns that you provide. It will call the first handler that it
-/// matches against, so order matters.
+/// matches against so order matters.
 pub struct Router {
     /// A custom 404 handler that you can provide.
     pub not_found: Option<RouterFn>,
