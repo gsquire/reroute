@@ -189,7 +189,7 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
 mod error;
 
 #[test]
-fn less_than_two_routes() {
+fn no_routes() {
     let mut router = Router::new();
     let e = router.finalize();
     assert_eq!(e.err(), Some(RouterError::TooFewRoutes));
