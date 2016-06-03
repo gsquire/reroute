@@ -4,7 +4,7 @@
 A router for Rust's hyper framework using regular expressions.
 
 ## Documentation
-Documentation is [here](https://gsquire.github.io/docs/rust/reroute/).
+Documentation is [here](https://gsquire.github.io/doc/reroute/reroute)
 
 A simple example to demonstrate how to use the router:
 
