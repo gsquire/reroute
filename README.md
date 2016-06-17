@@ -6,7 +6,11 @@ A router for Rust's hyper framework using regular expressions.
 ## Documentation
 Documentation is [here](https://gsquire.github.io/doc/reroute/reroute)
 
-A simple example to demonstrate how to use the router:
+## Examples
+You can see the [examples](https://github.com/gsquire/reroute/tree/master/examples) folder
+or check below:
+
+A simple application to demonstrate how to use the router:
 
 ```rust
 extern crate hyper;
