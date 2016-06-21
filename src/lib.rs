@@ -129,6 +129,12 @@ impl Router {
         self.add_route(Method::Delete, route, handler);
     }
 
+    /// A convenience method for PATCH requests.
+    pub fn patch<H>(&mut self, route: &str, handler: H)
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        self.add_route(Method::Patch, route, handler);
+    }
+
     /// This function ensures that a valid `RegexSet` could be made from the route
     /// vector that was built while using the functions that add routes. It
     /// requires that there exist at least one route so that the RegexSet can be
