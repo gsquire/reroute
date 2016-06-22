@@ -8,7 +8,7 @@ use hyper::server::{Handler, Request, Response};
 use hyper::status::StatusCode;
 use regex::{Regex, RegexSet};
 
-use error::RouterError;
+pub use error::RouterError;
 
 pub type Captures = Option<Vec<String>>;
 pub type NotFoundFn = fn(Request, Response);
