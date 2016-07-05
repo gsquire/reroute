@@ -88,13 +88,16 @@ impl Router {
     /// methods defined below.
     pub fn add_route<H>(&mut self, verb: Method, route: &str, handler: H)
         where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
-        let route_info = RouteInfo{route: route.to_owned(), verb: verb};
-        let pattern = Regex::new(route);
+        // This is added to provide stricter matching for routes that could have more than one
+        // match.
+        let anchored_pattern = [r"\A", route].join("");
+        let route_info = RouteInfo{route: anchored_pattern.clone(), verb: verb};
+        let pattern = Regex::new(&anchored_pattern);
         match pattern {
             Ok(p) => { self.compiled_list.push(p); },
             Err(e) => { println!("Not adding this route due to error: {}", e); }
         }
-        self.route_list.push(route.to_owned());
+        self.route_list.push(anchored_pattern.clone());
         self.route_map.insert(route_info, Box::new(handler));
     }
 
