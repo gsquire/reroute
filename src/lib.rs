@@ -16,7 +16,7 @@ pub type NotFoundFn = fn(Request, Response);
 #[derive(PartialEq, Eq, Hash)]
 pub struct RouteInfo {
     route: String,
-    verb: Method
+    verb: Method,
 }
 
 /// The Router struct contains the information for your app to route requests
@@ -34,12 +34,12 @@ pub struct Router {
     routes: Option<RegexSet>,
     route_list: Vec<String>,
     compiled_list: Vec<Regex>,
-    route_map: HashMap<RouteInfo, Box<Fn(Request, Response, Captures)>>
+    route_map: HashMap<RouteInfo, Box<Fn(Request, Response, Captures)>>,
 }
 
 // These are needed to satisfy the Handler trait while using Fn to accept closures.
-unsafe impl Send for Router { }
-unsafe impl Sync for Router { }
+unsafe impl Send for Router {}
+unsafe impl Sync for Router {}
 
 impl Handler for Router {
     // The handle method for the router simply tries to match the URI against
@@ -52,7 +52,10 @@ impl Handler for Router {
         match index {
             Some(i) => {
                 let route = &self.route_list[i];
-                let route_info = RouteInfo{route: route.clone(), verb: req.method.clone()};
+                let route_info = RouteInfo {
+                    route: route.clone(),
+                    verb: req.method.clone(),
+                };
                 let handler = self.route_map.get(&route_info);
                 match handler {
                     Some(h) => {
@@ -64,8 +67,8 @@ impl Handler for Router {
                         not_allowed(req, res);
                     }
                 }
-            },
-            None => self.not_found.unwrap()(req, res)
+            }
+            None => self.not_found.unwrap()(req, res),
         }
     }
 }
@@ -87,15 +90,23 @@ impl Router {
     /// is matched against. You can call this explicitly or use the convenience
     /// methods defined below.
     pub fn add_route<H>(&mut self, verb: Method, route: &str, handler: H)
-        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    {
         // This is added to provide stricter matching for routes that could have more than one
         // match.
         let anchored_pattern = [r"\A", route].join("");
-        let route_info = RouteInfo{route: anchored_pattern.clone(), verb: verb};
+        let route_info = RouteInfo {
+            route: anchored_pattern.clone(),
+            verb: verb,
+        };
         let pattern = Regex::new(&anchored_pattern);
         match pattern {
-            Ok(p) => { self.compiled_list.push(p); },
-            Err(e) => { println!("Not adding this route due to error: {}", e); }
+            Ok(p) => {
+                self.compiled_list.push(p);
+            }
+            Err(e) => {
+                println!("Not adding this route due to error: {}", e);
+            }
         }
         self.route_list.push(anchored_pattern.clone());
         self.route_map.insert(route_info, Box::new(handler));
@@ -104,37 +115,43 @@ impl Router {
 
     /// A convenience method for OPTIONS requests.
     pub fn options<H>(&mut self, route: &str, handler: H)
-        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    {
         self.add_route(Method::Options, route, handler);
     }
 
     /// A convenience method for GET requests.
     pub fn get<H>(&mut self, route: &str, handler: H)
-        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    {
         self.add_route(Method::Get, route, handler);
     }
 
     /// A convenience method for POST requests.
     pub fn post<H>(&mut self, route: &str, handler: H)
-        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    {
         self.add_route(Method::Post, route, handler);
     }
 
     /// A convenience method for PUT requests.
     pub fn put<H>(&mut self, route: &str, handler: H)
-        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    {
         self.add_route(Method::Put, route, handler);
     }
 
     /// A convenience method for DELETE requests.
     pub fn delete<H>(&mut self, route: &str, handler: H)
-        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    {
         self.add_route(Method::Delete, route, handler);
     }
 
     /// A convenience method for PATCH requests.
     pub fn patch<H>(&mut self, route: &str, handler: H)
-        where H: Fn(Request, Response, Captures) + Send + Sync + 'static {
+        where H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    {
         self.add_route(Method::Patch, route, handler);
     }
 
@@ -146,14 +163,16 @@ impl Router {
     /// It will also ensure that there is a handler for routes that do not match
     /// any available in the set.
     pub fn finalize(&mut self) -> Result<(), RouterError> {
-        if self.route_list.len() == 0  {
+        if self.route_list.len() == 0 {
             return Err(RouterError::TooFewRoutes);
         }
 
         // Check if the user added a 404 handler, else use the default.
         match self.not_found {
-            Some(_) => {},
-            None => { self.not_found = Some(default_not_found); }
+            Some(_) => {}
+            None => {
+                self.not_found = Some(default_not_found);
+            }
         }
 
         let re_routes = RegexSet::new(self.route_list.iter());
@@ -162,9 +181,7 @@ impl Router {
                 self.routes = Some(r);
                 Ok(())
             }
-            Err(_) => {
-                Err(RouterError::BadSet)
-            }
+            Err(_) => Err(RouterError::BadSet),
         }
     }
 
@@ -199,8 +216,8 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
                 v.push(c.unwrap().to_owned());
             }
             Some(v)
-        },
-        None => None
+        }
+        None => None,
     }
 }
 
