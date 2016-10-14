@@ -23,10 +23,11 @@ pub struct RouteInfo {
 /// properly based on their HTTP method and matching route. It allows the use
 /// of a custom 404 handler if desired but provides a default as well.
 ///
-/// Under the hood a Router uses a RegexSet to match URI's that come in to the
+/// Under the hood a Router uses a `RegexSet` to match URI's that come in to the
 /// instance of the hyper server. Because of this, it has the potential to match
 /// multiple patterns that you provide. It will call the first handler that it
 /// matches against so the order in which you add routes matters.
+#[derive(Default)]
 pub struct Router {
     /// A custom 404 handler that you can provide.
     pub not_found: Option<NotFoundFn>,
@@ -163,7 +164,7 @@ impl Router {
     /// It will also ensure that there is a handler for routes that do not match
     /// any available in the set.
     pub fn finalize(&mut self) -> Result<(), RouterError> {
-        if self.route_list.len() == 0 {
+        if self.route_list.is_empty() {
             return Err(RouterError::TooFewRoutes);
         }
 
