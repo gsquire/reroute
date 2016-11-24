@@ -9,5 +9,10 @@ documentation = "https://gsquire.github.io/doc/reroute/reroute"
 license = "MIT"
 
 [dependencies]
-hyper = "0.9"
+hyper = { version = "0.9", default-features = false }
 regex = "0.1"
+
+[features]
+default = ["ssl"]
+ssl = ["hyper/ssl"]
+serde-serialization = ["hyper/serde-serialization"]
