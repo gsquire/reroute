@@ -1,26 +1,30 @@
 use std::{error, fmt};
+use regex;
 
 // Potential errors that can happen while constructing a router.
-#[derive(Debug, PartialEq)]
-pub enum RouterError {
-    TooFewRoutes,
-    BadSet,
+#[derive(Debug)]
+pub enum Error {
+    BadRegex(regex::Error),
 }
 
-impl error::Error for RouterError {
+impl From<regex::Error> for Error {
+    fn from(error: regex::Error) -> Error {
+        Error::BadRegex(error)
+    }
+}
+
+impl error::Error for Error {
     fn description(&self) -> &str {
         match *self {
-            RouterError::TooFewRoutes => "No routes provided for the router",
-            RouterError::BadSet => "Error making RegexSet",
+            Error::BadRegex(ref error) => error.description(),
         }
     }
 }
 
-impl fmt::Display for RouterError {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            RouterError::TooFewRoutes => write!(f, "Cannot make a router with zero routes."),
-            RouterError::BadSet => write!(f, "Error making RegexSet."),
+            Error::BadRegex(ref error) => write!(f, "{}", error),
         }
     }
 }

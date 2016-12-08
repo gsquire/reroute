@@ -5,7 +5,7 @@ use std::io::Read;
 
 use hyper::Server;
 use hyper::server::{Request, Response};
-use reroute::{Captures, Router};
+use reroute::{RouterBuilder, Captures};
 
 fn digit_handler(_: Request, res: Response, c: Captures) {
     // We know there are captures because that is the only way this function is triggered.
@@ -29,28 +29,28 @@ fn body_handler(mut req: Request, res: Response, _: Captures) {
 }
 
 // A custom 404 handler.
-fn not_found(req: Request, res: Response) {
+fn not_found(req: Request, res: Response, _: Captures) {
     let uri = format!("{}", req.uri);
     let message = format!("why you calling {}?", uri);
     res.send(message.as_bytes()).unwrap();
 }
 
 fn main() {
-    let mut router = Router::new();
+    let mut builder = RouterBuilder::new();
 
     // Use raw strings so you don't need to escape patterns.
-    router.get(r"/(\d+)", digit_handler);
-    router.post(r"/body", body_handler);
+    builder.get(r"/(\d+)", digit_handler);
+    builder.post(r"/body", body_handler);
 
     // Using a closure also works!
-    router.delete(r"/closure", |_: Request, res: Response, _: Captures| {
+    builder.delete(r"/closure", |_: Request, res: Response, _: Captures| {
         res.send(b"You used a closure here, and called a delete. How neat.").unwrap();
     });
 
     // Add your own not found handler.
-    router.add_not_found(not_found);
+    builder.not_found(not_found);
 
-    router.finalize().unwrap();
+    let router = builder.finalize().unwrap();
 
     // You can pass the router to hyper's Server's handle function as it
     // implements the Handle trait.
