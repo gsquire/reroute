@@ -53,6 +53,8 @@ impl Handler for Router {
     }
 }
 
+/// A `RouterBuilder` enables you to build up a set of routes and their handlers
+/// to be handled by a `Router`.
 pub struct RouterBuilder {
     routes: Vec<String>,
     handlers: Vec<(Method, RouteHandler)>,
@@ -60,6 +62,7 @@ pub struct RouterBuilder {
 }
 
 impl RouterBuilder {
+    /// Create a new `RouterBuilder` with no route handlers.
     pub fn new() -> RouterBuilder {
         RouterBuilder {
             routes: vec![],
@@ -68,6 +71,9 @@ impl RouterBuilder {
         }
     }
 
+    /// Install a handler for requests of method `verb` and which have paths
+    /// matching `route`. There are also convenience methods named after the
+    /// appropriate verb.
     pub fn route<H>(&mut self, verb: Method, route: &str, handler: H) -> &mut RouterBuilder where
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
@@ -80,6 +86,8 @@ impl RouterBuilder {
         self
     }
 
+    /// Compile the routes in a `RouterBuilder` to produce a `Router` capable
+    /// of handling Hyper requests.
     pub fn finalize(self) -> Result<Router, Error> {
         Ok(Router {
             routes: RegexSet::new(self.routes.iter())?,
@@ -89,42 +97,51 @@ impl RouterBuilder {
         })
     }
 
+    /// Convenience method to install a GET handler.
     pub fn get<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
         self.route(Method::Get, route, handler)
     }
 
+    /// Convenience method to install a POST handler.
     pub fn post<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
         self.route(Method::Post, route, handler)
     }
 
+    /// Convenience method to install a PUT handler.
     pub fn put<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
         self.route(Method::Put, route, handler)
     }
 
+    /// Convenience method to install a PATCH handler.
     pub fn patch<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
         self.route(Method::Patch, route, handler)
     }
 
+    /// Convenience method to install a DELETE handler.
     pub fn delete<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
         self.route(Method::Delete, route, handler)
     }
 
+    /// Convenience method to install an OPTIONS handler.
     pub fn options<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
         self.route(Method::Options, route, handler)
     }
 
+    /// Install a fallback handler for when there is no matching route for a
+    /// request. If none is installed, the resulting `Router` will use a
+    /// default handler.
     pub fn not_found<H>(&mut self, not_found: H) -> &mut RouterBuilder where
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
