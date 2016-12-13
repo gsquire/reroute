@@ -18,7 +18,7 @@ extern crate reroute;
 
 use hyper::Server;
 use hyper::server::{Request, Response};
-use reroute::{Captures, Router};
+use reroute::{Captures, RouterBuilder};
 
 fn digit_handler(_: Request, res: Response, c: Captures) {
     println!("captures: {:?}", c);
@@ -26,14 +26,14 @@ fn digit_handler(_: Request, res: Response, c: Captures) {
 }
 
 fn main() {
-    let mut router = Router::new();
+    let mut builder = RouterBuilder::new();
 
     // Use raw strings so you don't need to escape patterns.
-    router.get(r"/(\d+)", digit_handler);
+    builder.get(r"/(\d+)", digit_handler);
 
     // There is no 404 handler added, so it will use the default defined in the
     // library.
-    router.finalize().unwrap();
+    let router = builder.finalize().unwrap();
 
     // You can pass the router to hyper's Server's handle function as it
     // implements the Handle trait.
