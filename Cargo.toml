@@ -10,7 +10,7 @@ license = "MIT"
 
 [dependencies]
 hyper = { version = "0.9", default-features = false }
-regex = "0.1"
+regex = "0.1.59"
 
 [features]
 default = ["ssl"]
