@@ -23,7 +23,7 @@ type RouteHandler = Box<Fn(Request, Response, Captures) + Send + Sync>;
 /// matches against so the order in which you add routes matters.
 pub struct Router {
     routes: RegexSet,
-    regexes: Vec<Regex>,
+    patterns: Vec<Regex>,
     handlers: Vec<(Method, RouteHandler)>,
     not_found: RouteHandler,
 }
@@ -43,7 +43,7 @@ impl Handler for Router {
                 continue;
             }
 
-            let ref regex = self.regexes[index];
+            let ref regex = self.patterns[index];
             let captures = get_captures(regex, &uri);
             handler(req, res, captures);
             return;
@@ -71,7 +71,7 @@ impl RouterBuilder {
     pub fn route<H>(&mut self, verb: Method, route: &str, handler: H) -> &mut RouterBuilder where
         H: Fn(Request, Response, Captures) + Send + Sync + 'static
     {
-        // anchor at the start and end so routes only match exactly
+        // Anchor the pattern at the start and end so routes only match exactly.
         let pattern = [r"\A", route, r"\z"].join("");
 
         self.routes.push(pattern);
@@ -83,7 +83,7 @@ impl RouterBuilder {
     pub fn finalize(self) -> Result<Router, Error> {
         Ok(Router {
             routes: RegexSet::new(self.routes.iter())?,
-            regexes: self.routes.iter().map(|route| Regex::new(route)).collect::<Result<_, _>>()?,
+            patterns: self.routes.iter().map(|route| Regex::new(route)).collect::<Result<_, _>>()?,
             handlers: self.handlers,
             not_found: self.not_found.unwrap_or_else(|| Box::new(default_not_found)),
         })
