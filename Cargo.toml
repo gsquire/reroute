@@ -1,16 +1,16 @@
 [package]
 name = "reroute"
-version = "0.2.4"
+version = "0.3.0"
 authors = ["Garrett Squire <garrettsquire@gmail.com>"]
 description = "A router that can use regular expressions for the hyper package"
 repository = "https://github.com/gsquire/reroute"
 keywords = ["http", "hyper"]
-documentation = "https://gsquire.github.io/doc/reroute/reroute"
+documentation = "https://docs.rs/reroute"
 license = "MIT"
 
 [dependencies]
 hyper = { version = "0.9", default-features = false }
-regex = "0.1.59"
+regex = "^0.1.59"
 
 [features]
 default = ["ssl"]
