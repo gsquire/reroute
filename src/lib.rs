@@ -172,7 +172,9 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
         Some(caps) => {
             let mut v = vec![];
             for c in caps.iter() {
-                v.push(c.unwrap().to_owned());
+                if c.is_some() {
+                    v.push(c.unwrap().as_str().to_owned());
+                }
             }
             Some(v)
         }
