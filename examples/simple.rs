@@ -3,9 +3,9 @@ extern crate reroute;
 
 use std::io::Read;
 
-use hyper::Server;
 use hyper::server::{Request, Response};
-use reroute::{RouterBuilder, Captures};
+use hyper::Server;
+use reroute::{Captures, RouterBuilder};
 
 fn digit_handler(_: Request, res: Response, c: Captures) {
     // We know there are captures because that is the only way this function is triggered.
@@ -44,7 +44,8 @@ fn main() {
 
     // Using a closure also works!
     builder.delete(r"/closure", |_: Request, res: Response, _: Captures| {
-        res.send(b"You used a closure here, and called a delete. How neat.").unwrap();
+        res.send(b"You used a closure here, and called a delete. How neat.")
+            .unwrap();
     });
 
     // Add your own not found handler.
@@ -54,5 +55,8 @@ fn main() {
 
     // You can pass the router to hyper's Server's handle function as it
     // implements the Handle trait.
-    Server::http("127.0.0.1:3000").unwrap().handle(router).unwrap();
+    Server::http("127.0.0.1:3000")
+        .unwrap()
+        .handle(router)
+        .unwrap();
 }

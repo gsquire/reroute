@@ -74,8 +74,9 @@ impl RouterBuilder {
     /// Install a handler for requests of method `verb` and which have paths
     /// matching `route`. There are also convenience methods named after the
     /// appropriate verb.
-    pub fn route<H>(&mut self, verb: Method, route: &str, handler: H) -> &mut RouterBuilder where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn route<H>(&mut self, verb: Method, route: &str, handler: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         // Anchor the pattern at the start and end so routes only match exactly.
         let pattern = [r"\A", route, r"\z"].join("");
@@ -91,50 +92,60 @@ impl RouterBuilder {
     pub fn finalize(self) -> Result<Router, Error> {
         Ok(Router {
             routes: RegexSet::new(self.routes.iter())?,
-            patterns: self.routes.iter().map(|route| Regex::new(route)).collect::<Result<_, _>>()?,
+            patterns: self.routes
+                .iter()
+                .map(|route| Regex::new(route))
+                .collect::<Result<_, _>>()?,
             handlers: self.handlers,
-            not_found: self.not_found.unwrap_or_else(|| Box::new(default_not_found)),
+            not_found: self.not_found
+                .unwrap_or_else(|| Box::new(default_not_found)),
         })
     }
 
     /// Convenience method to install a GET handler.
-    pub fn get<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn get<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         self.route(Method::Get, route, handler)
     }
 
     /// Convenience method to install a POST handler.
-    pub fn post<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn post<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         self.route(Method::Post, route, handler)
     }
 
     /// Convenience method to install a PUT handler.
-    pub fn put<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn put<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         self.route(Method::Put, route, handler)
     }
 
     /// Convenience method to install a PATCH handler.
-    pub fn patch<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn patch<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         self.route(Method::Patch, route, handler)
     }
 
     /// Convenience method to install a DELETE handler.
-    pub fn delete<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn delete<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         self.route(Method::Delete, route, handler)
     }
 
     /// Convenience method to install an OPTIONS handler.
-    pub fn options<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder where 
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn options<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         self.route(Method::Options, route, handler)
     }
@@ -142,8 +153,9 @@ impl RouterBuilder {
     /// Install a fallback handler for when there is no matching route for a
     /// request. If none is installed, the resulting `Router` will use a
     /// default handler.
-    pub fn not_found<H>(&mut self, not_found: H) -> &mut RouterBuilder where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static
+    pub fn not_found<H>(&mut self, not_found: H) -> &mut RouterBuilder
+    where
+        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
     {
         self.not_found = Some(Box::new(not_found));
         self

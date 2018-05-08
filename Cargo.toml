@@ -9,5 +9,5 @@ documentation = "https://docs.rs/reroute"
 license = "MIT"
 
 [dependencies]
-hyper = "0.10"
-regex = "0.2"
+hyper = "0.11"
+regex = "1.0"
