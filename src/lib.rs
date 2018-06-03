@@ -1,9 +1,10 @@
+extern crate futures;
 extern crate hyper;
 extern crate regex;
 
-use hyper::method::Method;
-use hyper::server::{Handler, Request, Response};
-use hyper::status::StatusCode;
+use futures::future;
+use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::service::Service;
 use regex::{Regex, RegexSet};
 
 pub use error::Error;
@@ -11,7 +12,8 @@ pub use error::Error;
 mod error;
 
 pub type Captures = Option<Vec<String>>;
-type RouteHandler = Box<Fn(Request, Response, Captures) + Send + Sync>;
+// TODO: Can we use "impl Trait" somehow?
+type RouteHandler = Box<Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync>;
 
 /// The Router struct contains the information for your app to route requests
 /// properly based on their HTTP method and matching route. It allows the use
@@ -28,28 +30,32 @@ pub struct Router {
     not_found: RouteHandler,
 }
 
-impl Handler for Router {
-    fn handle(&self, req: Request, res: Response) {
-        let uri = format!("{}", req.uri);
+impl Service for Router {
+    type ReqBody = Body;
+    type ResBody = Body;
+    type Error = Error;
+    type Future = future::FutureResult<Response<Self::ResBody>, Error>;
+
+    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
+        // TODO: Can we just get a string slice here?
+        let uri = format!("{}", req.uri());
         let matches = self.routes.matches(&uri);
         if !matches.matched_any() {
-            (self.not_found)(req, res, None);
-            return;
+            return future::ok((self.not_found)(req, None));
         }
 
         for index in matches {
             let (ref method, ref handler) = self.handlers[index];
-            if method != &req.method {
+            if method != req.method() {
                 continue;
             }
 
             let ref regex = self.patterns[index];
             let captures = get_captures(regex, &uri);
-            handler(req, res, captures);
-            return;
+            return future::ok(handler(req, captures));
         }
 
-        not_allowed(req, res);
+        future::ok(not_allowed())
     }
 }
 
@@ -76,7 +82,7 @@ impl RouterBuilder {
     /// appropriate verb.
     pub fn route<H>(&mut self, verb: Method, route: &str, handler: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
         // Anchor the pattern at the start and end so routes only match exactly.
         let pattern = [r"\A", route, r"\z"].join("");
@@ -105,49 +111,49 @@ impl RouterBuilder {
     /// Convenience method to install a GET handler.
     pub fn get<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
-        self.route(Method::Get, route, handler)
+        self.route(Method::GET, route, handler)
     }
 
     /// Convenience method to install a POST handler.
     pub fn post<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
-        self.route(Method::Post, route, handler)
+        self.route(Method::POST, route, handler)
     }
 
     /// Convenience method to install a PUT handler.
     pub fn put<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
-        self.route(Method::Put, route, handler)
+        self.route(Method::PUT, route, handler)
     }
 
     /// Convenience method to install a PATCH handler.
     pub fn patch<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
-        self.route(Method::Patch, route, handler)
+        self.route(Method::PATCH, route, handler)
     }
 
     /// Convenience method to install a DELETE handler.
     pub fn delete<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
-        self.route(Method::Delete, route, handler)
+        self.route(Method::DELETE, route, handler)
     }
 
     /// Convenience method to install an OPTIONS handler.
     pub fn options<H>(&mut self, route: &str, handler: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
-        self.route(Method::Options, route, handler)
+        self.route(Method::OPTIONS, route, handler)
     }
 
     /// Install a fallback handler for when there is no matching route for a
@@ -155,7 +161,7 @@ impl RouterBuilder {
     /// default handler.
     pub fn not_found<H>(&mut self, not_found: H) -> &mut RouterBuilder
     where
-        H: Fn(Request, Response, Captures) + Send + Sync + 'static,
+        H: Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync + 'static,
     {
         self.not_found = Some(Box::new(not_found));
         self
@@ -163,17 +169,17 @@ impl RouterBuilder {
 }
 
 // The default 404 handler.
-fn default_not_found(req: Request, mut res: Response, _: Captures) {
-    let message = format!("No route handler found for {}", req.uri);
-    *res.status_mut() = StatusCode::NotFound;
-    res.send(message.as_bytes()).unwrap();
+fn default_not_found(req: Request<Body>, _: Captures) -> Response<Body> {
+    let message = format!("No route handler found for {}", req.uri());
+    let mut resp = Response::new(Body::from(message));
+    *resp.status_mut() = StatusCode::NOT_FOUND;
+    resp
 }
 
-// This handler will get fired when a URI matches a route but contains the wrong method.
-fn not_allowed(_: Request, mut res: Response) {
-    *res.status_mut() = StatusCode::MethodNotAllowed;
-    let res = res.start().unwrap();
-    res.end().unwrap();
+fn not_allowed() -> Response<Body> {
+    let mut resp = Response::new(Body::from("Method Not Allowed"));
+    *resp.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
+    resp
 }
 
 // Return that captures from a pattern that was matched.
