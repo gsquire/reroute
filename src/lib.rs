@@ -3,8 +3,8 @@ extern crate hyper;
 extern crate regex;
 
 use futures::future;
-use hyper::{Body, Method, Request, Response, StatusCode};
 use hyper::service::Service;
+use hyper::{Body, Method, Request, Response, StatusCode};
 use regex::{Regex, RegexSet};
 
 pub use error::Error;
@@ -98,12 +98,14 @@ impl RouterBuilder {
     pub fn finalize(self) -> Result<Router, Error> {
         Ok(Router {
             routes: RegexSet::new(self.routes.iter())?,
-            patterns: self.routes
+            patterns: self
+                .routes
                 .iter()
                 .map(|route| Regex::new(route))
                 .collect::<Result<_, _>>()?,
             handlers: self.handlers,
-            not_found: self.not_found
+            not_found: self
+                .not_found
                 .unwrap_or_else(|| Box::new(default_not_found)),
         })
     }
