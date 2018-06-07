@@ -1,38 +1,34 @@
+extern crate futures;
 extern crate hyper;
 extern crate reroute;
 
-use std::io::Read;
-
-use hyper::server::{Request, Response};
-use hyper::Server;
+use futures::{future, Future};
+use hyper::service::{service_fn, Service};
+use hyper::{Body, Request, Response, Server};
 use reroute::{Captures, RouterBuilder};
 
-fn digit_handler(_: Request, res: Response, c: Captures) {
+fn digit_handler(_: Request<Body>, c: Captures) -> Response<Body> {
     // We know there are captures because that is the only way this function is triggered.
     let caps = c.unwrap();
     let digits = &caps[1];
     if digits.len() > 5 {
-        res.send(b"that's a big number!").unwrap();
+        Response::new(Body::from("that's a big number!"))
     } else {
-        res.send(b"not a big number").unwrap();
+        Response::new(Body::from("not a big number"))
     }
 }
 
 // You can ignore captures if you don't want to use them.
-fn body_handler(mut req: Request, res: Response, _: Captures) {
-    println!("request from {}", req.remote_addr);
-
+fn body_handler(req: Request<Body>, _: Captures) -> Response<Body> {
     // Read the request body into a string and then print it back out on the response.
-    let mut body = String::new();
-    let _ = req.read_to_string(&mut body);
-    res.send(body.as_bytes()).unwrap();
+    Response::new(Body::from(req.into_body()))
 }
 
 // A custom 404 handler.
-fn not_found(req: Request, res: Response, _: Captures) {
-    let uri = format!("{}", req.uri);
+fn not_found(req: Request<Body>, _: Captures) -> Response<Body> {
+    let uri = format!("{}", req.uri());
     let message = format!("why you calling {}?", uri);
-    res.send(message.as_bytes()).unwrap();
+    Response::new(Body::from(message))
 }
 
 fn main() {
@@ -43,20 +39,36 @@ fn main() {
     builder.post(r"/body", body_handler);
 
     // Using a closure also works!
-    builder.delete(r"/closure", |_: Request, res: Response, _: Captures| {
-        res.send(b"You used a closure here, and called a delete. How neat.")
-            .unwrap();
-    });
+    builder.delete(
+        r"/closure",
+        |_: Request<Body>, _: Captures| -> Response<Body> {
+            Response::new(Body::from(
+                "You used a closure here, and called a delete. How neat.",
+            ))
+        },
+    );
 
     // Add your own not found handler.
     builder.not_found(not_found);
 
-    let router = builder.finalize().unwrap();
+    let addr = "127.0.0.1:3000".parse().unwrap();
 
-    // You can pass the router to hyper's Server's handle function as it
-    // implements the Handle trait.
-    Server::http("127.0.0.1:3000")
-        .unwrap()
-        .handle(router)
-        .unwrap();
+    hyper::rt::run(future::lazy(move || {
+        let router = builder.finalize().unwrap();
+
+        let new_service = move || {
+            let router = router.clone();
+            service_fn(move |req| {
+                // TODO: Oh no...
+                let mut r = router.clone();
+                r.call(req)
+            })
+        };
+
+        let server = Server::bind(&addr)
+            .serve(new_service)
+            .map_err(|e| eprintln!("server error: {}", e));
+
+        server
+    }));
 }

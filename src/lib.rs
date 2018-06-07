@@ -2,6 +2,8 @@ extern crate futures;
 extern crate hyper;
 extern crate regex;
 
+use std::sync::Arc;
+
 use futures::future;
 use hyper::service::Service;
 use hyper::{Body, Method, Request, Response, StatusCode};
@@ -12,7 +14,6 @@ pub use error::Error;
 mod error;
 
 pub type Captures = Option<Vec<String>>;
-// TODO: Can we use "impl Trait" somehow?
 type RouteHandler = Box<Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync>;
 
 /// The Router struct contains the information for your app to route requests
@@ -23,16 +24,19 @@ type RouteHandler = Box<Fn(Request<Body>, Captures) -> Response<Body> + Send + S
 /// instance of the hyper server. Because of this, it has the potential to match
 /// multiple patterns that you provide. It will call the first handler that it
 /// matches against so the order in which you add routes matters.
+#[derive(Clone)]
 pub struct Router {
-    routes: RegexSet,
-    patterns: Vec<Regex>,
-    handlers: Vec<(Method, RouteHandler)>,
-    not_found: RouteHandler,
+    routes: Arc<RegexSet>,
+    patterns: Arc<Vec<Regex>>,
+    handlers: Arc<Vec<(Method, RouteHandler)>>,
+    not_found: Arc<RouteHandler>,
 }
 
 impl Service for Router {
     type ReqBody = Body;
     type ResBody = Body;
+    // TODO: We can create a type of Error that will never return since this returns a Response
+    // regardless.
     type Error = Error;
     type Future = future::FutureResult<Response<Self::ResBody>, Error>;
 
@@ -97,16 +101,18 @@ impl RouterBuilder {
     /// of handling Hyper requests.
     pub fn finalize(self) -> Result<Router, Error> {
         Ok(Router {
-            routes: RegexSet::new(self.routes.iter())?,
-            patterns: self
-                .routes
-                .iter()
-                .map(|route| Regex::new(route))
-                .collect::<Result<_, _>>()?,
-            handlers: self.handlers,
-            not_found: self
-                .not_found
-                .unwrap_or_else(|| Box::new(default_not_found)),
+            routes: Arc::new(RegexSet::new(self.routes.iter())?),
+            patterns: Arc::new(
+                self.routes
+                    .iter()
+                    .map(|route| Regex::new(route))
+                    .collect::<Result<_, _>>()?,
+            ),
+            handlers: Arc::new(self.handlers),
+            not_found: Arc::new(
+                self.not_found
+                    .unwrap_or_else(|| Box::new(default_not_found)),
+            ),
         })
     }
 
@@ -191,11 +197,9 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
     match caps {
         Some(caps) => {
             let mut v = vec![];
-            for c in caps.iter() {
-                if c.is_some() {
-                    v.push(c.unwrap().as_str().to_owned());
-                }
-            }
+            caps.iter()
+                .filter(|c| c.is_some())
+                .for_each(|c| v.push(c.unwrap().as_str().to_owned()));
             Some(v)
         }
         None => None,
@@ -204,9 +208,11 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
 
 #[test]
 fn bad_regular_expression() {
-    fn test_handler(_: Request, _: Response, _: Captures) {}
+    fn test_handler(_: Request<Body>, _: Captures) -> Response<Body> {
+        Response::new(Body::from("Test"))
+    }
     let mut router = RouterBuilder::new();
-    router.route(Method::Get, r"/[", test_handler);
+    router.route(Method::GET, r"/[", test_handler);
     let e = router.finalize();
     assert!(e.is_err());
 }
