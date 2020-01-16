@@ -194,7 +194,12 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
 
 #[test]
 fn bad_regular_expression() {
-    fn test_handler(_: Request, _: Response, _: Captures) {}
+    fn test_handler(_: Request<Body>, _: Captures) -> Response<Body> {
+        Response::builder()
+            .status(StatusCode::OK)
+            .body("Ok".into())
+            .unwrap()
+    }
     let mut router = RouterBuilder::new();
     router.route(Method::GET, r"/[", test_handler);
     let e = router.finalize();
