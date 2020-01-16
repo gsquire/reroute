@@ -1,5 +1,6 @@
 [package]
 name = "reroute"
+edition = "2018"
 version = "0.4.0"
 authors = ["Garrett Squire <garrettsquire@gmail.com>"]
 description = "A router that can use regular expressions for the hyper package"
@@ -9,6 +10,9 @@ documentation = "https://docs.rs/reroute"
 license = "MIT"
 
 [dependencies]
-futures = "0.1"
-hyper = "0.12"
-regex = "1.0"
+hyper = "0.13"
+regex = "1.3"
+
+[dev-dependencies]
+lazy_static = "1.4"
+tokio = { version = "0.2", features = ["full"] }

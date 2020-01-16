@@ -1,12 +1,5 @@
-extern crate futures;
-extern crate hyper;
-extern crate regex;
-
-use std::sync::Arc;
-
-use futures::future;
-use hyper::service::Service;
-use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::Method;
+use hyper::{Body, Request, Response, StatusCode};
 use regex::{Regex, RegexSet};
 
 pub use error::Error;
@@ -14,7 +7,7 @@ pub use error::Error;
 mod error;
 
 pub type Captures = Option<Vec<String>>;
-type RouteHandler = Box<Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync>;
+type RouteHandler = Box<dyn Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync>;
 
 /// The Router struct contains the information for your app to route requests
 /// properly based on their HTTP method and matching route. It allows the use
@@ -24,28 +17,21 @@ type RouteHandler = Box<Fn(Request<Body>, Captures) -> Response<Body> + Send + S
 /// instance of the hyper server. Because of this, it has the potential to match
 /// multiple patterns that you provide. It will call the first handler that it
 /// matches against so the order in which you add routes matters.
-#[derive(Clone)]
 pub struct Router {
-    routes: Arc<RegexSet>,
-    patterns: Arc<Vec<Regex>>,
-    handlers: Arc<Vec<(Method, RouteHandler)>>,
-    not_found: Arc<RouteHandler>,
+    routes: RegexSet,
+    patterns: Vec<Regex>,
+    handlers: Vec<(Method, RouteHandler)>,
+    not_found: RouteHandler,
 }
 
-impl Service for Router {
-    type ReqBody = Body;
-    type ResBody = Body;
-    // TODO: We can create a type of Error that will never return since this returns a Response
-    // regardless.
-    type Error = Error;
-    type Future = future::FutureResult<Response<Self::ResBody>, Error>;
-
-    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
-        // TODO: Can we just get a string slice here?
-        let uri = format!("{}", req.uri());
-        let matches = self.routes.matches(&uri);
+impl Router {
+    /// This function should be called inside of a hyper service. It will find the correct handler
+    /// for the given route and handle errors appropriately.
+    pub fn handle(&self, req: Request<Body>) -> Response<Body> {
+        let uri = req.uri().path();
+        let matches = self.routes.matches(uri);
         if !matches.matched_any() {
-            return future::ok((self.not_found)(req, None));
+            return (self.not_found)(req, None);
         }
 
         for index in matches {
@@ -55,11 +41,11 @@ impl Service for Router {
             }
 
             let ref regex = self.patterns[index];
-            let captures = get_captures(regex, &uri);
-            return future::ok(handler(req, captures));
+            let captures = get_captures(regex, uri);
+            return handler(req, captures);
         }
 
-        future::ok(not_allowed())
+        not_allowed()
     }
 }
 
@@ -101,18 +87,16 @@ impl RouterBuilder {
     /// of handling Hyper requests.
     pub fn finalize(self) -> Result<Router, Error> {
         Ok(Router {
-            routes: Arc::new(RegexSet::new(self.routes.iter())?),
-            patterns: Arc::new(
-                self.routes
-                    .iter()
-                    .map(|route| Regex::new(route))
-                    .collect::<Result<_, _>>()?,
-            ),
-            handlers: Arc::new(self.handlers),
-            not_found: Arc::new(
-                self.not_found
-                    .unwrap_or_else(|| Box::new(default_not_found)),
-            ),
+            routes: RegexSet::new(self.routes.iter())?,
+            patterns: self
+                .routes
+                .iter()
+                .map(|route| Regex::new(route))
+                .collect::<Result<_, _>>()?,
+            handlers: self.handlers,
+            not_found: self
+                .not_found
+                .unwrap_or_else(|| Box::new(default_not_found)),
         })
     }
 
@@ -177,17 +161,19 @@ impl RouterBuilder {
 }
 
 // The default 404 handler.
-fn default_not_found(req: Request<Body>, _: Captures) -> Response<Body> {
-    let message = format!("No route handler found for {}", req.uri());
-    let mut resp = Response::new(Body::from(message));
-    *resp.status_mut() = StatusCode::NOT_FOUND;
-    resp
+fn default_not_found(_: Request<Body>, _: Captures) -> Response<Body> {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body("Not Found".into())
+        .unwrap()
 }
 
+// This handler will get fired when a URI matches a route but contains the wrong method.
 fn not_allowed() -> Response<Body> {
-    let mut resp = Response::new(Body::from("Method Not Allowed"));
-    *resp.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
-    resp
+    Response::builder()
+        .status(StatusCode::METHOD_NOT_ALLOWED)
+        .body("Method Not Allowed".into())
+        .unwrap()
 }
 
 // Return that captures from a pattern that was matched.
@@ -208,9 +194,7 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
 
 #[test]
 fn bad_regular_expression() {
-    fn test_handler(_: Request<Body>, _: Captures) -> Response<Body> {
-        Response::new(Body::from("Test"))
-    }
+    fn test_handler(_: Request, _: Response, _: Captures) {}
     let mut router = RouterBuilder::new();
     router.route(Method::GET, r"/[", test_handler);
     let e = router.finalize();
