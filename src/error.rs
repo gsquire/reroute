@@ -1,4 +1,4 @@
-use std::{error, fmt};
+use std::fmt;
 
 // Potential errors that can happen while constructing a router.
 #[derive(Debug)]
@@ -9,14 +9,6 @@ pub enum Error {
 impl From<::regex::Error> for Error {
     fn from(error: ::regex::Error) -> Error {
         Error::BadRegex(error)
-    }
-}
-
-impl error::Error for Error {
-    fn description(&self) -> &str {
-        match *self {
-            Error::BadRegex(ref error) => error.description(),
-        }
     }
 }
 
