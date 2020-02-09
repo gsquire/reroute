@@ -1,7 +1,7 @@
 [package]
 name = "reroute"
 edition = "2018"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Garrett Squire <garrettsquire@gmail.com>"]
 description = "A router that can use regular expressions for the hyper package"
 repository = "https://github.com/gsquire/reroute"

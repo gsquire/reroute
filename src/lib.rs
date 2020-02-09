@@ -43,7 +43,7 @@ impl Router {
                 continue;
             }
 
-            let ref regex = self.patterns[index];
+            let regex = &self.patterns[index];
             let captures = get_captures(regex, uri);
             return handler(req, captures);
         }
@@ -54,6 +54,7 @@ impl Router {
 
 /// A `RouterBuilder` enables you to build up a set of routes and their handlers
 /// to be handled by a `Router`.
+#[derive(Default)]
 pub struct RouterBuilder {
     routes: Vec<String>,
     handlers: Vec<(Method, RouteHandler)>,
@@ -63,11 +64,7 @@ pub struct RouterBuilder {
 impl RouterBuilder {
     /// Create a new `RouterBuilder` with no route handlers.
     pub fn new() -> RouterBuilder {
-        RouterBuilder {
-            routes: vec![],
-            handlers: vec![],
-            not_found: None,
-        }
+        RouterBuilder::default()
     }
 
     /// Install a handler for requests of method `verb` and which have paths
