@@ -1,12 +1,13 @@
 use hyper::Method;
 use hyper::{Body, Request, Response, StatusCode};
 use regex::{Regex, RegexSet};
+use smallvec::SmallVec;
 
 pub use error::Error;
 
 mod error;
 
-pub type Captures = Option<Vec<String>>;
+pub type Captures = Option<SmallVec<[String; 4]>>;
 type RouteHandler = Box<dyn Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync>;
 
 /// The Router struct contains the information for your app to route requests
@@ -182,7 +183,7 @@ fn get_captures(pattern: &Regex, uri: &str) -> Captures {
     let caps = pattern.captures(uri);
     match caps {
         Some(caps) => {
-            let mut v = vec![];
+            let mut v = SmallVec::<[String; 4]>::new();
             caps.iter()
                 .filter(|c| c.is_some())
                 .for_each(|c| v.push(c.unwrap().as_str().to_owned()));
