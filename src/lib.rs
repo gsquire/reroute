@@ -7,7 +7,7 @@ pub use error::Error;
 
 mod error;
 
-pub type Captures = Option<SmallVec<[String; 4]>>;
+pub type Captures<'r> = Option<SmallVec<[&'r str; 4]>>;
 type RouteHandler = Box<dyn Fn(Request<Body>, Captures) -> Response<Body> + Send + Sync>;
 
 /// The Router struct contains the information for your app to route requests
@@ -29,7 +29,9 @@ impl Router {
     /// This function should be called inside of a hyper service. It will find the correct handler
     /// for the given route and handle errors appropriately.
     pub fn handle(&self, req: Request<Body>) -> Response<Body> {
-        let uri = req.uri().path();
+        // It should be cheaper to clone this than making an owned string of the path.
+        let uri = req.uri().clone();
+        let uri = uri.path();
         let matches = self.routes.matches(uri);
         if !matches.matched_any() {
             return (self.not_found)(req, None);
@@ -178,15 +180,15 @@ fn not_allowed() -> Response<Body> {
 }
 
 // Return that captures from a pattern that was matched.
-fn get_captures(pattern: &Regex, uri: &str) -> Captures {
+fn get_captures<'r>(pattern: &'r Regex, uri: &'r str) -> Captures<'r> {
     // We know this compiles because it was part of the set.
     let caps = pattern.captures(uri);
     match caps {
         Some(caps) => {
-            let mut v = SmallVec::<[String; 4]>::new();
+            let mut v = SmallVec::<[&str; 4]>::new();
             caps.iter()
                 .filter(|c| c.is_some())
-                .for_each(|c| v.push(c.unwrap().as_str().to_owned()));
+                .for_each(|c| v.push(c.unwrap().as_str()));
             Some(v)
         }
         None => None,
